@@ -49,9 +49,9 @@ app.post("/", (req,res) => {
     index:count++
   }
   
-  developers.push(person)
-  console.log("developers",developers)
-  res.json(developers)
+  developers.push(person);
+  console.log("developers",developers);
+  res.json(developers);
 })
 
 //// paytm api ---------------------------------------------========
