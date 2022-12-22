@@ -4,9 +4,9 @@ const express = require("express");
 const app = express();
 const PaytmChecksum = require("./paytmChecksum");
 const cors = require("cors");
+var https = require('https');
 
 const PORT = process.env.PORT || 3001; /// setting up PORT
-
 ///// Cors for
 app.use(
   cors({
@@ -18,7 +18,8 @@ app.use(
 app.use(express.json());
 
 
-const developers = []
+const developers = [];
+let count = 0
 
 
 
@@ -31,25 +32,128 @@ app.get("/", (req, res) => {
   });
 });
 
-app.get("/:id", (req, res) => {
-  if (req.params.id == 0) {
-    res.status(404).send("Id Should not be zero in Rout Parameter");
-  } else {
-    res.json({
-      Id_params: req.params.id,
-    });
-  }
-});
+// app.get("/:id", (req, res) => {
+//   if (req.params.id == 0) {
+//     res.status(404).send("Id Should not be zero in Rout Parameter");
+//   } else {
+//     res.json({
+//       Id_params: req.params.id,
+//     });
+//   }
+// });
 
 app.post("/", (req,res) => {
   const person = {
     id:req.body.id,
-    name:req.body.name
+    name:req.body.name,
+    index:count++
   }
   
   developers.push(person)
   console.log("developers",developers)
   res.json(developers)
+})
+
+//// paytm api ---------------------------------------------========
+app.post("/payment",(req,res)=>{
+  /////////------
+  // res.send("response")
+  // let orderId = 'PYTM_ORDR_'+new Date().getTime();
+  // let orderId = `PYTM_ORDR_1670914911410`;
+
+  // Sandbox Credentials
+  // let mid = "AqSipo92499010904391"; // Merchant ID
+  // let mkey = "nCVjURN@UrBq9mnX"; // Merhcant Key
+
+  ////////// fetching details from request
+  let mid = req.body.mid;
+  let mkey = req.body.mkey;
+  let amount = req.body.amount;
+  let orderId = req.body.orderId;
+
+  var paytmParams = {};
+
+  paytmParams.body = {
+    "requestType"  : "Payment",
+    "mid"      : `${mid}`,
+    "websiteName"  : "DEFAULT",
+    "orderId"    : `${orderId}`,
+    "callbackUrl"  : `http://localhost:8081`,
+    "txnAmount"   : {
+      "value"   : `${amount}`,
+      "currency" : "INR",
+    },
+    "userInfo"   : {
+      "custId"  : '1001',
+    },
+    // "enablePaymentMode":[{"mode" : "UPI", "channels" : ["UPIPUSH"]}]
+    // "disablePaymentMode":[{"mode" : "UPI", "channels" : ["UPIPUSH"]}]
+   
+  };
+
+  PaytmChecksum.generateSignature(JSON.stringify(paytmParams.body), mkey).then(function(checksum){
+      console.log("checksum",checksum);
+    paytmParams.head = {
+      "signature" : `${checksum}`
+    };
+
+    var post_data = JSON.stringify(paytmParams);
+
+
+    console.log("paytmParams.body",paytmParams.body)
+
+    var options = {
+      // / for Staging /
+      hostname: 'securegw-stage.paytm.in',
+
+      // / for Production /
+          // hostname: 'securegw.paytm.in',
+
+      port: 443,
+      path: `/theia/api/v1/initiateTransaction?mid=${mid}&orderId=${orderId}`,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': `${post_data.length}`
+      }
+    };
+    console.log("post_data.length",post_data.length)
+    var response = "";
+    var post_req = https.request(options, function(post_res) {
+      console.log("post_res",post_res)
+      post_res.on('data', function (chunk) {
+        response += chunk;
+        console.log("******res====>",response)
+        
+      });
+          post_res.on('end', function(){
+
+
+        // console.log('Response: ', response);
+        // console.log('post data: ', post_data);
+
+              // res.json({data: JSON.parse(response), orderId: orderId, mid: mid, amount: amount});
+           
+              console.log("befor-data-set")
+              // setPaymentData({
+              //     ...paymentData,
+              //     token: JSON.parse(response).body.txnToken,
+              //     order: orderId,
+              //     mid: mid,
+              //     amount: {amount}
+              // })
+              // console.log(response)
+              res.json(JSON.parse(response))
+              // console.log("after-data-set",paymentData)
+              
+             
+      });
+    });
+
+    post_req.write(post_data);
+    post_req.end();
+    
+  });
 })
 
 app.listen(PORT, () => {
