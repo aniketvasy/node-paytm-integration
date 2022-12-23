@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 3001; /// setting up PORT
 ///// Cors for
 app.use(
   cors({
-    origin: "http://localhost:3000", // allow url which can send request to this server
+    origin: "*", // allow url which can send request to this server
     methods: ["POST", "GET"], //
   })
 );

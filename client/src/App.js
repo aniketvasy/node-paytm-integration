@@ -27,6 +27,8 @@ function App() {
     console.log("amount==>", paymentData.amount);
   }
   async function initiate() {
+    setDidableButton(true)
+    setLoading(true);
     let innerOrderId = orderId;
     //// calling Server to initiate transection -------
     // mid = "AqSipo92499010904391"; // Merchant ID
@@ -34,7 +36,7 @@ function App() {
     // let orderId = 'PYTM_ORDR_'+new Date().getTime();
     try {
       const data = await axios.post(
-        "http://localhost:8081/payment",
+        "https://paytm-express-aniketsen-2.onrender.com/payment",
         {
           orderId: `${orderId}`,
           mid: paymentData.mid,
@@ -93,7 +95,9 @@ function App() {
         title: "Oops...",
         text: "Api Connection Problem!",
       });
-
+      setLoading(false);
+      clearAmount()
+     
 
       setOrderDetails((order) => {
         console.log({
@@ -102,14 +106,16 @@ function App() {
           status: "Success",
         });
         return [
-          ...order,
           {
             amount: paymentData.amount,
             id: paymentData.orderId,
             status: "Api_Connection_Problem!",
           },
+          ...order
         ];
       });
+      setDidableButton(false)
+      setLoading(false);
     }
 
     //   console.log("response of",count++,paymentData.amount,"----",paymentData.amount,"----",paymentData.token)
@@ -191,14 +197,17 @@ function App() {
                 status: "Success",
               });
               return [
-                ...order,
                 {
                   amount: paymentData.amount,
                   id: paymentData.orderId,
                   status: "Success",
                 },
+                ...order
               ];
             });
+            setDidableButton(false)
+            clearAmount()
+            setLoading(false);
           } else {
             window.Paytm.CheckoutJS.close();
             Swal.fire({
@@ -214,20 +223,25 @@ function App() {
                 status: "Success",
               });
               return [
-                ...order,
                 {
                   amount: paymentData.amount,
                   id: paymentData.orderId,
                   status: "Failed",
                 },
+                ...order
               ];
             });
+            setDidableButton(false)
+            clearAmount()
+            setLoading(false);
           }
         },
         notifyMerchant: function notifyMerchant(eventName, data) {
           console.log("Closed");
           console.log("))))))))> Merchent ", data);
           setLoading(false);
+          setDidableButton(false)
+          clearAmount()
         },
       },
     };
@@ -248,12 +262,24 @@ function App() {
     }
     // setDisableButton(false)
   };
+  console.log("======..........>>>>>",paymentData.amount>0)
+
+  // clear Amount Data
+  function clearAmount(){
+    setPaymentData((prev)=>{
+      return{
+        ...prev,
+        amount:""
+      }
+    })
+  }
   return (
     <>
       <div className="mainDiv">
         <div className="EnterAmount">
           <h1>Enter Amount</h1>
           <input
+            type="number"
             className="enter-amount-inpt"
             onChange={inputHandler}
             value={paymentData.amount}
@@ -263,7 +289,14 @@ function App() {
           {loading ? (
             <img src="https://c.tenor.com/I6kN-6X7nhAAAAAj/loading-buffering.gif" />
           ) : (
-            <button onClick={initiate}>₹ Pay Now</button>
+            <button onClick={()=>{
+              if(paymentData.amount>0){
+                initiate()
+              }
+              else{
+                alert("Please Enter valid Number")
+              }
+            }} disabled={disableButton}>₹ Pay Now</button>
           )}
         </div>
       </div>
